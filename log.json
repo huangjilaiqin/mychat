@@ -1,0 +1,25 @@
+{
+    "appenders":[
+        {
+            "type":"console",
+            "category":"test1"
+        },
+        {
+            "type":"dateFile",
+            "filename":"./log/chatServer.log",
+            "pattern": "_yyyy-MM-dd_hh",
+            "alwaysIncludePattern": false, 
+            "category":"chat"
+        },
+        {
+            "type":"dateFile",
+            "filename":"./log/performance.log",
+            "pattern": "_yyyy-MM-dd_hh",
+            "alwaysIncludePattern": false, 
+            "category":"performance"
+        }
+    ],
+    "levels":{
+        "test":"trace"
+    }
+}

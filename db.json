@@ -1,0 +1,9 @@
+
+{
+    "host" : "192.168.41.180",
+    "port" : 3307,
+    "user" : "ball_rw",
+    "password" : "123456",
+    "database" : "ball"
+}
+

@@ -1,0 +1,12 @@
+node_modules
+#.gitignore
+*.sw*
+*.pid
+*.json
+*.bak
+
+log/*.log
+#log/performance.log
+log/*.log_*
+test/log/*.log
+test/log/*.log_*

@@ -1,0 +1,22 @@
+{
+  "name": "chat",
+  "description": "chat server",
+  "version": "0.0.1",
+  "license": "private",
+  "author": {
+    "name": "huangji",
+    "email": "huangji@500wan.com"
+  },
+  "dependencies": {
+    "async": "1.0.0",
+    "bufferhelper": "0.2.0",
+    "log4js": "0.6.25",
+    "mysql": "2.6.2",
+    "redis": "0.12.1",
+    "socket.io-client": "1.3.5",
+    "socket.io": "1.3.5"
+  },
+  "engines": {
+    "node": ">= 0.6"
+  }
+}
