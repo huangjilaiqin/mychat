@@ -1,9 +1,9 @@
 
 {
-    "host" : "192.168.41.180",
-    "port" : 3307,
-    "user" : "ball_rw",
-    "password" : "123456",
-    "database" : "ball"
+    "host" : "10.10.108.165",
+    "port" : 3306,
+    "user" : "qqsdball_web",
+    "password" : "F3MdzQVH5mZ6dC5t",
+    "database" : "test"
 }
 

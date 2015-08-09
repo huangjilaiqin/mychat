@@ -2,14 +2,14 @@
     "appenders":[
         {
             "type":"console",
-            "category":"test1"
+            "category":"console"
         },
         {
             "type":"dateFile",
-            "filename":"./log/chatServer.log",
+            "filename":"./log/server.log",
             "pattern": "_yyyy-MM-dd_hh",
             "alwaysIncludePattern": false, 
-            "category":"chat"
+            "category":"server"
         },
         {
             "type":"dateFile",

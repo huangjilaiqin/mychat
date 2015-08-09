@@ -1,12 +1,10 @@
 
-var redis = require('redis');
 require('./global.js');
 var log = require('./log.js').log;
 var logPerformance = require('./log.js').logPerformance;
 var communicate = require('./communicate.js');
 var roomBroadcast = communicate.roomBroadcast;
 var issued = communicate.issued;
-var redisCli = redis.createClient(serverConfig.redisPort, serverConfig.redisHost);
 
 function onDownline(socket, roomId, userId){
     delete socket2user[socket.id];

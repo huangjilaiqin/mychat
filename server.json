@@ -1,5 +1,5 @@
 {
-    "listenPort" : 5001,
+    "listenPort" : 5002,
     "historyNum" : 10,
 
     "redisHost" : "192.168.41.50",

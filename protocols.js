@@ -1,6 +1,5 @@
 
 
-var redis = require('redis');
 
 var global = require('./global.js');
 var db = require('./DBPool.js');
@@ -11,24 +10,20 @@ var parseData = require('./util.js').parseData;
 var roomBroadcast = communicate.roomBroadcast;
 var issued = communicate.issued;
 var DateFormat = require('./util.js').DateFormat;
-var redisCli = redis.createClient(serverConfig.redisPort, serverConfig.redisHost);
 var common = require('./common.js');
 
 
 var protocols = {
-    /*
-    'register':register,
-    'login':login,
-    'logout':logout,
-    'findfriendbyid':findFriendById,
-    'addfriend':addFriend,
-    'chat':chat,
-    'issueStatus':issueStatus,
-    */
+    'register':onRegister,
+    'login':onLogin,
+    'logout':onLogout,
+    'finduserbymail':onFindUserByMail,
+    'addfriendbymail':onAddFriendByMail,
+    //'issueStatus':onIssueStatus,
     //发送聊天消息
     'message' : onMessage,
 
-    //房间操作
+    /*
     'getRooms' : getRooms,
     'createRoom' : createRoom,
     'enterRoom' : enterRoom,
@@ -44,6 +39,7 @@ var protocols = {
     //管理员协议
     'countTime' : countTime,
     'onlineNum' : getOnlineNum,
+    */
 };
 
 function getRooms(){
@@ -56,6 +52,188 @@ function getRooms(){
         content : issuedRooms,
     };
     this.emit('message', JSON.stringify(obj));
+}
+
+var mailReg = /^\w+@\w+\.\w+$/;
+var REGISTER_MAIL = 1;
+var REGISTER_WEIXIN = 2;
+var registerTypes = [REGISTER_MAIL, REGISTER_WEIXIN];
+
+function checkRegister(data){
+    var obj = JSON.parse(data);
+    var registerType = obj['type'];
+    var mail = obj['mail'];
+    var passwd = obj['passwd'];
+    if(!registerType || !registerTypes[registerType]){
+        return {'error':'error register type:['+registerType+']'};
+    }
+    switch(registerType){
+        case REGISTER_MAIL:
+            var mail = obj['mail'];
+            if(!passwd)
+                return {'error':'error passwd is null'};
+            if(!mail || !mailReg.test(mail))
+                return {'error':'error mail address:['+mail+']'};
+
+            break;
+        case REGISTER_WEIXIN:
+            break;
+        default:
+            break;
+    }
+    return obj;
+}
+
+function onRegister(data){
+    log.trace('register', data);
+    var obj = checkRegister(data);
+    var type = obj['type'];
+    var mail = obj['mail'];
+    var passwd = obj['passwd'];
+    log.trace('register', obj);
+    var emitter = this;
+    if(obj['error']){
+        log.trace('register error', obj['error']);
+        emitter.emit('register', JSON.stringify(obj['error']));
+    }else{
+        log.trace('register', 'register no error');
+        switch(type){
+            case REGISTER_MAIL:
+                log.trace('register mail');
+                db.query('select 1 from t_user where mail = ?', [mail], function(err, rows){
+                    if(err){
+                        emitter.emit('register', JSON.stringify({'error':err}));
+                    }else if(rows.length!=0){
+                        emitter.emit('register', JSON.stringify({'errno':103}));
+                    }else{
+                        log.trace('register mail insert');
+                        db.query('insert into t_user(mail, passwd) values (?, ?)', [mail, passwd], function(err, rows){
+                            if(err){
+                                emitter.emit('register', JSON.stringify({'error':err}));
+                            }else{
+                                emitter.emit('register', JSON.stringify({}));
+                            }
+                        });
+                    }
+                });
+                break;
+            case REGISTER_WEIXIN:
+                break;
+            default:
+                emitter.emit('register', JSON.stringify({'error':'error anyway'}));
+                break;
+        }
+    }
+}
+
+function checkLogin(data){
+    var obj = JSON.parse(data);
+    var type = obj['type'];
+    if(!type || !registerTypes[type]){
+        return {'error':'error login type:['+type+']'};
+    }
+    switch(type){
+        case REGISTER_MAIL:
+            if(!obj['mail'] || !obj['passwd'])
+                return {'login':{'errno':101}};
+            break;
+        case REGISTER_WEIXIN:
+            break;
+        default:
+            break;
+    }
+    return obj;
+}
+
+var USER_STATUS_ONLINE = 1;
+var USER_STATUS_OFFLINE = 2;
+var USER_STATUS_BUSY = 3;
+
+function onLogin(data){
+    var obj = checkLogin(data);
+    var status =  obj['status']?obj['status']:USER_STATUS_ONLINE;
+    var emitter = this;
+    if(obj['error']){
+        emitter.emit('login', JSON.stringify(obj));
+    }else{
+        db.query('select userid from t_user where mail=? and passwd=?', [obj['mail'], obj['passwd']], function(err, rows){
+            if(err){
+                emitter.emit('login', JSON.stringify({'error':err}));
+            }else{
+                if(rows.length == 0){
+                    emitter.emit('login', JSON.stringify({'errno':102}));
+                }else{
+                    var userid = rows[0]['userid'];
+                    emitter.emit('login', JSON.stringify({'userid':userid}));
+                    db.query('update t_user set status=? where userid=?', [status, userid], function(err, rows){
+                        log.trace(userid+" set status:"+status);
+                    });
+                    db.query('select u.* from (select friendid from t_friends where userid = ?) as f inner join t_user as u on(f.friendid=u.userid)', [userid], function(err, rows){
+                        if(err){
+                            emitter.emit('login', JSON.stringify({'error':err}));
+                        }else{
+                            emitter.emit('init', JSON.stringify(rows));
+                        }
+                    });
+                }
+            }        
+        });
+    }
+}
+
+function onLogout(data){
+
+}
+function onFindUserByMail(data){
+    var obj = JSON.parse(data);
+    log.trace('finduserbymail:', obj);
+    var emitter = this;
+    var mail = obj['mail'];
+    if(!mail)
+        emitter.emit('finduserbymail', JSON.stringify({'errno':201}));
+    else{
+        db.query('select nickname,headimg,status from t_user where mail=?', [mail], function(err, rows){
+            if(err){
+                emitter.emit('finduserbymail', JSON.stringify({'error':err}));
+            }else{
+                if(rows.length == 0){
+                    emitter.emit('finduserbymail', JSON.stringify({'errno':202}));
+                }else{
+                    emitter.emit('finduserbymail', JSON.stringify(rows[0]));
+                }
+            }   
+        });
+    }
+}
+function onAddFriendByMail(data){
+    var obj = JSON.parse(data);
+    var emitter = this;
+    var mail = obj['mail'];
+    if(!mail)
+        emitter.emit('addfriendbymail', JSON.stringify({'errno':201}));
+    else{
+        db.query('select userid from t_user where mail=?', [mail], function(err, rows){
+            if(err){
+                emitter.emit('addfriendbymail', JSON.stringify({'error':err}));
+            }else{
+                if(rows.length == 0){
+                    emitter.emit('addfriendbymail', JSON.stringify({'errno':202}));
+                }else{
+                    db.query('insert into t_friends (userid, friendid) values (?,?)', [obj['userid'], rows[0]['userid']], function(err, rows){
+                        if(err){
+                            emitter.emit('addfriendbymail', JSON.stringify({'error':err}));
+                        }else{
+                            emitter.emit('addfriendbymail', JSON.stringify({}));
+                        }
+                    });
+                }
+            }   
+        });
+    }
+}
+
+function onIssueStatus(data){
+
 }
 
 function onMessage(data){

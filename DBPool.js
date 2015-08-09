@@ -9,7 +9,7 @@ var DBPool = function(config){
     }
     this.pool = mysql.createPool(config);
 };
-
+//增删改查都是用query方法
 DBPool.prototype.query = function(sql, args, cb){
     this.pool.getConnection(function(err, connection) {
         if(err){

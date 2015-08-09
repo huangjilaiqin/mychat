@@ -5,7 +5,7 @@ log4js.configure('log.json');
 var log = log4js.getLogger('client');
 
 var host = 'ws://localhost:5001';
-var host2 = 'ws://127.0.0.1:5002';
+var host2 = 'ws://localhost:5002';
 var rehost = 'ws://192.168.41.102:5001';
 var yuhost = 'http://ws.qqshidao.com';
 var uhost = 'http://ws.51winball.com';
