@@ -15,3 +15,7 @@ var p = JSON.parse(s);
 console.log(p['error']);
 
 console.log(new Date().getTime());
+
+var aa=[{'id':12, 'name':'huangji'}, {'id':34,'name':'laiqin'}];
+for(var a in aa)
+    console.log(aa[a]);

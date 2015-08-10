@@ -168,13 +168,24 @@ function onLogin(data){
                     var userId = rows[0]['userid'];
                     emitter.emit('login', JSON.stringify({'userid':userId}));
                     db.query('update t_user set status=? where userid=?', [status, userId], function(err, rows){
-                        log.trace(userid+" set status:"+status);
+                        log.trace(userId+" set status:"+status);
                     });
                     db.query('select u.* from (select friendid from t_friends where userid = ?) as f inner join t_user as u on(f.friendid=u.userid)', [userId], function(err, rows){
                         if(err){
                             emitter.emit('login', JSON.stringify({'error':err}));
                         }else{
+                            var session = {};
+                            sessions[userId] = session;
+                            session['socket'] = emitter;
+                            var friends = {};
+                            session['friends'] = friends;
+                            for(i in rows){
+                                var friend = rows[i];
+                                friends[friend['userid']] = friend;
+                            }
                             emitter.emit('init', JSON.stringify(rows));
+                            //通知好友上线
+                            //to do
                         }
                     });
                 }
@@ -246,48 +257,53 @@ function checkMessage(data){
     var type = obj['type'];
     var content = obj['content'];
     if(!userId || !friendId || !content){
-        return {'errno', 100};
+        return {'errno':100};
     }
     if(type == undefined || type<chatMsgType.min || type>chatMsgType.max){
-        return {'errno', 301};
+        return {'errno': 301};
     }
+    return obj;
 }
 
 function onMessage(data){
     log.debug('onMessage:', data);
 
+    var emitter = this;
     var obj = checkMessage(data);
+
+    if(obj['errno']){
+        emitter.emit('message', JSON.stringify(obj));    
+        return;
+    }
 
     var userId = obj['userid'];
     var friendId = obj['friendid'];
     var type = obj['type'];
     var content = obj['content'];
 
-    var emitter = this;
 
     var insertTime = new Date();
-    obj['createTime'] = DateFormat('yyyy-MM-dd hh:mm:ss', insertTime);
+    time = DateFormat('yyyy-MM-dd hh:mm:ss', insertTime);
 
     //响应自己
-    emitter.emit('message', );
+    emitter.emit('message', JSON.stringify({}));
     //发送给朋友
     var friend = sessions[friendId];
     if(friend){
-        friend['socket'].emit('message', );
+        friend['socket'].emit('message', JSON.stringify({'friendid':friendId, 'type':type, 'content':content, 'time':time}));
     }else{
         //好友离线
     }
 
     //入库
-    var sql = 'insert into roomchatrecord set roomid=?, time=?, type=?, userid=?, content=?'; 
-    var args = [roomId, insertTime, obj['type'], userId, content];
+    var sql = 'insert into t_chatrecord set userid=?,friendid=?,time=?,type=?,content=?'; 
+    var args = [userId,friendId,time,type,content];
     db.query(sql, args, function(err, rows){
         if(err){
             log.error('insert message:', err);
             return;
         }
         var recoredId = rows.insertId;
-        history['id'] = recoredId; 
     });
 
 }

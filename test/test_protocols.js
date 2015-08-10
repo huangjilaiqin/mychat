@@ -79,6 +79,9 @@ socket.emit('finduserbymail', encodeData(findUserByMailObj));
 var addFriendByMailObj = {'userid':userid, 'mail':'1577594730@qq.com'}
 socket.emit('addfriendbymail', encodeData(addFriendByMailObj));
 
+var msgObj = {'userid':userid, 'friendid':1, type:0, content:'聊会天'};
+socket.emit('message', encodeData(msgObj));
+
 
 /*
 function enterRoom(datas){
