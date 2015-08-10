@@ -153,22 +153,24 @@ function onLogin(data){
     var obj = checkLogin(data);
     var status =  obj['status']?obj['status']:USER_STATUS_ONLINE;
     var emitter = this;
+    var mail = obj['mail'];
+    var passwd = obj['passwd'];
     if(obj['error']){
         emitter.emit('login', JSON.stringify(obj));
     }else{
-        db.query('select userid from t_user where mail=? and passwd=?', [obj['mail'], obj['passwd']], function(err, rows){
+        db.query('select userid from t_user where mail=? and passwd=?', [mail, passwd], function(err, rows){
             if(err){
                 emitter.emit('login', JSON.stringify({'error':err}));
             }else{
                 if(rows.length == 0){
                     emitter.emit('login', JSON.stringify({'errno':102}));
                 }else{
-                    var userid = rows[0]['userid'];
-                    emitter.emit('login', JSON.stringify({'userid':userid}));
-                    db.query('update t_user set status=? where userid=?', [status, userid], function(err, rows){
+                    var userId = rows[0]['userid'];
+                    emitter.emit('login', JSON.stringify({'userid':userId}));
+                    db.query('update t_user set status=? where userid=?', [status, userId], function(err, rows){
                         log.trace(userid+" set status:"+status);
                     });
-                    db.query('select u.* from (select friendid from t_friends where userid = ?) as f inner join t_user as u on(f.friendid=u.userid)', [userid], function(err, rows){
+                    db.query('select u.* from (select friendid from t_friends where userid = ?) as f inner join t_user as u on(f.friendid=u.userid)', [userId], function(err, rows){
                         if(err){
                             emitter.emit('login', JSON.stringify({'error':err}));
                         }else{
@@ -209,6 +211,7 @@ function onAddFriendByMail(data){
     var obj = JSON.parse(data);
     var emitter = this;
     var mail = obj['mail'];
+    var userId = obj['userid'];
     if(!mail)
         emitter.emit('addfriendbymail', JSON.stringify({'errno':201}));
     else{
@@ -219,7 +222,7 @@ function onAddFriendByMail(data){
                 if(rows.length == 0){
                     emitter.emit('addfriendbymail', JSON.stringify({'errno':202}));
                 }else{
-                    db.query('insert into t_friends (userid, friendid) values (?,?)', [obj['userid'], rows[0]['userid']], function(err, rows){
+                    db.query('insert into t_friends (userid, friendid) values (?,?)', [userId, rows[0]['userid']], function(err, rows){
                         if(err){
                             emitter.emit('addfriendbymail', JSON.stringify({'error':err}));
                         }else{
@@ -236,53 +239,44 @@ function onIssueStatus(data){
 
 }
 
+function checkMessage(data){
+    var obj = parseData(data);
+    var userId = obj['userid'];
+    var friendId = obj['friendid'];
+    var type = obj['type'];
+    var content = obj['content'];
+    if(!userId || !friendId || !content){
+        return {'errno', 100};
+    }
+    if(type == undefined || type<chatMsgType.min || type>chatMsgType.max){
+        return {'errno', 301};
+    }
+}
+
 function onMessage(data){
     log.debug('onMessage:', data);
 
-    var costMessage = [];
-    costMessage.push(new Date().getTime()); 
+    var obj = checkMessage(data);
 
-    var obj = parseData(data);
-    //to do检查这些参数,返回错误
-    var roomId = obj['roomId'];
-    var userId = obj['userId'];
+    var userId = obj['userid'];
+    var friendId = obj['friendid'];
     var type = obj['type'];
     var content = obj['content'];
 
-    if(!roomId || !userId || !content){
-        this.emit('err', 'error message format!');
-        return;
-    }
-    if(type == undefined || type<chatMsgType.min || type>chatMsgType.max){
-        this.emit('err', 'message type:'+type+' is not suport!');
-        return;
-    }
+    var emitter = this;
+
     var insertTime = new Date();
     obj['createTime'] = DateFormat('yyyy-MM-dd hh:mm:ss', insertTime);
 
-    //检查用户是否登录
-    var session = sessions[userId];
-    if(!session || session['state'] != userState.online){
-        this.emit('err', 'user is not login!');
-        return;
+    //响应自己
+    emitter.emit('message', );
+    //发送给朋友
+    var friend = sessions[friendId];
+    if(friend){
+        friend['socket'].emit('message', );
+    }else{
+        //好友离线
     }
-
-    //to do 过滤
-
-    //
-    var user = session['userInfo'];
-    var history = {
-        userId:obj['userId'],
-        time:obj['createTime'],
-        type:obj['type'],
-        content:obj['content'],
-        nickname:user['nickname'],
-        headimg:user['headimg'],
-    };
-    newestHistory.push(history);
-
-    //转发数据给房间的其它用户
-    roomBroadcast(roomId, -1, issuedType.message, obj);
 
     //入库
     var sql = 'insert into roomchatrecord set roomid=?, time=?, type=?, userid=?, content=?'; 
@@ -296,8 +290,6 @@ function onMessage(data){
         history['id'] = recoredId; 
     });
 
-    costMessage.push(new Date().getTime()); 
-    costTimes['message'].push(costMessage);
 }
 //创建房间
 function createRoom(data){
