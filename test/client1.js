@@ -2,7 +2,8 @@
 var io = require('socket.io-client');
 var host = 'ws://localhost:5002';
 var uhost2 = 'ws://123.59.40.113:5002';
-var socket = io.connect(host, {
+var uhost2 = 'http://ws.o-topcy.com';
+var socket = io.connect(uhost2, {
     'timeout': 1000,
     'reconnectionAttempts': 50,
     forceNew: true,
@@ -11,7 +12,7 @@ var socket = io.connect(host, {
 
 socket.on('connect', function(){
     console.log('connect');
-    socket.close();
+    //socket.close();
 });
 socket.on('reconnect', function(){
     console.log('reconnect');

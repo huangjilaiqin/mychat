@@ -150,6 +150,8 @@ var USER_STATUS_OFFLINE = 2;
 var USER_STATUS_BUSY = 3;
 
 function onLogin(data){
+    log.debug('onLogin');
+    log.debug('onLogin:', data);
     var obj = checkLogin(data);
     var status =  obj['status']?obj['status']:USER_STATUS_ONLINE;
     var emitter = this;
@@ -257,10 +259,10 @@ function checkMessage(data){
     var type = obj['type'];
     var content = obj['content'];
     if(!userId || !friendId || !content){
-        return {'errno':100};
+        return {id:userId, 'errno':100};
     }
     if(type == undefined || type<chatMsgType.min || type>chatMsgType.max){
-        return {'errno': 301};
+        return {id:userId, 'errno': 301};
     }
     return obj;
 }
@@ -280,19 +282,22 @@ function onMessage(data){
     var friendId = obj['friendid'];
     var type = obj['type'];
     var content = obj['content'];
+    var seq = obj['seq'];
 
 
     var insertTime = new Date();
     time = DateFormat('yyyy-MM-dd hh:mm:ss', insertTime);
 
     //响应自己
-    emitter.emit('message', JSON.stringify({}));
+    emitter.emit('message', JSON.stringify({id:friendId, seq:seq}));
     //发送给朋友
     var friend = sessions[friendId];
     if(friend){
-        friend['socket'].emit('message', JSON.stringify({'friendid':friendId, 'type':type, 'content':content, 'time':time}));
+        log.info(userId+" to "+friendId+" "+content);
+        friend['socket'].emit('message', JSON.stringify({'userid':friendId, 'friendid':userId, 'type':type, 'content':content, 'time':time}));
     }else{
         //好友离线
+        log.info('friend:'+friendId+" is offline!");
     }
 
     //入库
