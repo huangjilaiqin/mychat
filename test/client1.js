@@ -2,10 +2,12 @@
 var io = require('socket.io-client');
 var host = 'ws://localhost:5002';
 var uhost2 = 'ws://123.59.40.113:5002';
-var uhost2 = 'http://ws.o-topcy.com';
+//var uhost2 = 'http://ws.o-topcy.com';
+var uhost2 = 'http://ws.qqshidao2.com';
+//var uhost2 = 'ws://123.59.42.194:5001'
 var socket = io.connect(uhost2, {
-    'timeout': 1000,
-    'reconnectionAttempts': 50,
+    //'timeout': 1000,
+    //'reconnectionAttempts': 50,
     forceNew: true,
     transports: ["websocket", 'flashsocket', 'htmlfile', 'xhr-multipart', 'polling-xhr', 'jsonp-polling'],
 });
@@ -20,4 +22,6 @@ socket.on('reconnect', function(){
 socket.on('disconnect', function(){
     console.log('disconnect');
 });
-
+socket.on('error', function(err){
+    console.log('err:'+err);
+});

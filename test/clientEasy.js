@@ -2,7 +2,7 @@
 var io = require('socket.io-client');
 var host = 'ws://localhost:5002';
 var uhost2 = 'ws://123.59.40.113:5002';
-var uhost2 = 'http://ws.o-topcy.com';
+//var uhost2 = 'http://ws.o-topcy.com';
 
 var socket = io.connect(uhost2, {
     transports: ["websocket", 'flashsocket', 'htmlfile', 'xhr-multipart', 'polling-xhr', 'jsonp-polling'],
@@ -45,7 +45,7 @@ var REGISTER_WEIXIN = 2;
 
 if(process.argv.length!=4){
     console.log('node clientEasy.js mail passwd');
-    return;
+    exit();
 }
 
 var mail = process.argv[2];

@@ -8,5 +8,6 @@
     "hostName" : "http://www.qqsdimg.com",
     "sessionTime" : 1800000,
     "sessionCheckTime" : 300000,
-    "analysisPerformanceTime" : 300000
+    "analysisPerformanceTime" : 300000,
+    "img": "/home/service/nginx/html/myimg/"
 }

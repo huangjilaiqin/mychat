@@ -16,6 +16,7 @@ DBPool.prototype.query = function(sql, args, cb){
             cb(err);
             return;
         }
+        //connection.query("SET character_set_client=utf8,character_set_connection=utf8");
 
         connection.query(sql, args, function(err, rows) {
             connection.release();

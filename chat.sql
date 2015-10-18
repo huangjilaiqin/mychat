@@ -1,6 +1,5 @@
 use test;
 
-drop table if exists `t_user`;
 create table `t_user`(
     userid int not null auto_increment,
     mail varchar(50),
@@ -14,7 +13,6 @@ create table `t_user`(
 COLLATE='utf8_unicode_ci';
 
 
-drop table if exists `t_friends`;
 create table `t_friends`(
     userid int not null,
     friendid int not null,
@@ -27,7 +25,6 @@ COLLATE='utf8_unicode_ci';
  select u.* from (select friendid from t_friends where userid = ?) as f inner join t_user as u on(f.friendid=u.userid);
  */
 
-drop table if exists `t_chatrecord`;
 create table `t_chatrecord`(
     `id` int not null auto_increment,
     `userid` int not null,
@@ -47,7 +44,6 @@ COLLATE='utf8_unicode_ci';
  select * from t_chatrecord where userid=? and friendid=? or userid=? and friendid=?
  */
 
-drop table if exists `rooms`;
 create table `rooms`(
     `id` int not null auto_increment,
     `name` varchar(200) not null,
@@ -61,7 +57,6 @@ create table `rooms`(
 COLLATE='utf8_unicode_ci';
 
 
-drop table if exists `roomchatrecord`;
 create table `roomchatrecord`(
     `roomid` int not null,
     `time` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -75,7 +70,6 @@ create table `roomchatrecord`(
 COLLATE='utf8_unicode_ci';
 
 
-drop table if exists `roommate`;
 create table `roommate`(
     `id` int not null,
     `roomid` int not null,
@@ -85,3 +79,24 @@ create table `roommate`(
 )
 COLLATE='utf8_unicode_ci';
 
+create table `action_tags`(
+    `id` int not null auto_increment,
+    `userid` int not null,
+    `name` varchar(40) not null,
+    primary key (id),
+    INDEX `userid` (`userid`) USING BTREE
+)
+COLLATE='utf8_unicode_ci';
+
+create table `action_videos`(
+    `id` int not null auto_increment,
+    `userid` int not null,
+    `name` varchar(40) not null,
+    -- tagid1,tagid2....
+    `tags` varchar(50) null,
+    `notice` varchar(200) null,
+    `video` varchar(100) not null,
+    primary key (id),
+    INDEX `userid` (`userid`) USING BTREE
+)
+COLLATE='utf8_unicode_ci';

@@ -11,10 +11,12 @@ var roomBroadcast = communicate.roomBroadcast;
 var issued = communicate.issued;
 var DateFormat = require('./util.js').DateFormat;
 var common = require('./common.js');
+var fs = require('fs');
 
 
 var protocols = {
     'register':onRegister,
+    'changeUserInfo':onChangeUserInfo,
     'login':onLogin,
     'logout':onLogout,
     'finduserbymail':onFindUserByMail,
@@ -22,6 +24,11 @@ var protocols = {
     //'issueStatus':onIssueStatus,
     //发送聊天消息
     'message' : onMessage,
+    'history' : onHistory,
+    'uploadrun' : onUploadRun,
+    'createtag':onCreateTag,
+    'gettags':onGetTags,
+    //'uploadvideo':onUploadvideo,
 
     /*
     'getRooms' : getRooms,
@@ -89,12 +96,14 @@ function onRegister(data){
     var obj = checkRegister(data);
     var type = obj['type'];
     var mail = obj['mail'];
+    var nickname = obj['nickname'];
     var passwd = obj['passwd'];
+    var headImg = obj['headImg'];
     log.trace('register', obj);
     var emitter = this;
     if(obj['error']){
         log.trace('register error', obj['error']);
-        emitter.emit('register', JSON.stringify(obj['error']));
+        emitter.emit('register', JSON.stringify(obj));
     }else{
         log.trace('register', 'register no error');
         switch(type){
@@ -107,11 +116,26 @@ function onRegister(data){
                         emitter.emit('register', JSON.stringify({'errno':103}));
                     }else{
                         log.trace('register mail insert');
-                        db.query('insert into t_user(mail, passwd) values (?, ?)', [mail, passwd], function(err, rows){
+                        db.query('insert into t_user(mail,nickname, passwd) values (?,?,?)', [mail,nickname,passwd], function(err, rows){
                             if(err){
                                 emitter.emit('register', JSON.stringify({'error':err}));
                             }else{
-                                emitter.emit('register', JSON.stringify({}));
+                                var userId = rows.insertId;
+                                log.info('register userid:'+userId);
+                                //写头像
+                                if(headImg.length>0){
+                                    var buf = new Buffer(headImg, "base64");
+                                    headImgPath = serverConfig.img+userId+".jpg"
+                                    fs.writeFile(headImgPath, buf, function(err){
+                                        if(err){
+                                            log.error("write headImg err:"+err);
+                                            return;
+                                        }
+                                        log.info("write headImg success");
+                                            
+                                    });
+                                }
+                                emitter.emit('register', JSON.stringify({'userid':userId}));
                             }
                         });
                     }
@@ -123,6 +147,77 @@ function onRegister(data){
                 emitter.emit('register', JSON.stringify({'error':'error anyway'}));
                 break;
         }
+    }
+}
+function checkChangeUserInfo(data){
+    var obj = JSON.parse(data);
+    var mail = obj['mail'];
+    var passwd = obj['passwd'];
+    var nickname = obj['nickname'];
+    if(!nickname)
+        return {'error':'error nickname is null'};
+    if(!passwd)
+        return {'error':'error passwd is null'};
+    if(!mail || !mailReg.test(mail))
+        return {'error':'error mail address:['+mail+']'};
+    
+    return obj;
+}
+function onChangeUserInfo(data){
+    log.trace('changeUserInfo', data);
+    var obj = checkChangeUserInfo(data);
+    var userid = obj['userid'];
+    var mail = obj['mail'];
+    var nickname = obj['nickname'];
+    var passwd = obj['passwd'];
+    var headImgName = obj['headImgName'];
+    var headImgContent = obj['headImgContent'];
+    var emitter = this;
+    if(obj['error']){
+        log.trace('changeUserInfo error', obj['error']);
+        emitter.emit('changeUserInfo', JSON.stringify(obj));
+    }else{
+        
+        db.query('select 1 from t_user where userid = ?', [userid], function(err, rows){
+            if(err){
+                emitter.emit('changeUserInfo', JSON.stringify({'error':err}));
+            }else if(rows.length==0){
+                emitter.emit('changeUserInfo', JSON.stringify({'error':'user is not exit'}));
+            }else{
+                if(headImgName && headImgContent){
+                    db.query('update t_user set mail=?,nickname=?, passwd=?, headImg=? where mail=?', [mail,nickname,passwd,headImgName,userid], function(err, rows){
+                        if(err){
+                            emitter.emit('changeUserInfo', JSON.stringify({'error':err}));
+                        }else{
+                            log.info('changeUserInfo userid:'+userid);
+                            //写头像
+                            if(headImgContent.length>0){
+                                var buf = new Buffer(headImgContent, "base64");
+                                headImgPath = serverConfig.img+headImgName;
+                                fs.writeFile(headImgPath, buf, function(err){
+                                    if(err){
+                                        log.error("write headImg err:"+err);
+                                        return;
+                                    }
+                                    log.info("write headImg success");
+                                        
+                                });
+                            }
+                            emitter.emit('changeUserInfo', JSON.stringify({}));
+                        }
+                    });
+                }else{
+                    db.query('update t_user set mail=?,nickname=?, passwd=? where mail=?', [mail,nickname,passwd,userid], function(err, rows){
+                        if(err){
+                            emitter.emit('changeUserInfo', JSON.stringify({'error':err}));
+                        }else{
+                            log.info('changeUserInfo userid:'+userid);
+                            emitter.emit('changeUserInfo', JSON.stringify({}));
+                        }
+                    });
+                }
+            }
+        });
     }
 }
 
@@ -160,15 +255,21 @@ function onLogin(data){
     if(obj['error']){
         emitter.emit('login', JSON.stringify(obj));
     }else{
-        db.query('select userid from t_user where mail=? and passwd=?', [mail, passwd], function(err, rows){
+        db.query('select userid,mail,nickname,phone,headimg,status from t_user where mail=? and passwd=?', [mail, passwd], function(err, rows){
             if(err){
                 emitter.emit('login', JSON.stringify({'error':err}));
             }else{
                 if(rows.length == 0){
                     emitter.emit('login', JSON.stringify({'errno':102}));
                 }else{
-                    var userId = rows[0]['userid'];
-                    emitter.emit('login', JSON.stringify({'userid':userId}));
+                    row = rows[0];
+                    var userId = row['userid'];
+                    var mail = row['mail'];
+                    var phone = row['phone'];
+                    var nickname = row['nickname'];
+                    var headimg = row['headimg'];
+                    var status = row['status'];
+                    emitter.emit('login', JSON.stringify({'userid':userId, 'mail':mail, 'phone':phone, 'nickname':nickname, 'headimg': headimg, 'status':status, 'passwd':passwd}));
                     db.query('update t_user set status=? where userid=?', [status, userId], function(err, rows){
                         log.trace(userId+" set status:"+status);
                     });
@@ -182,10 +283,17 @@ function onLogin(data){
                             var friends = {};
                             session['friends'] = friends;
                             for(i in rows){
-                                var friend = rows[i];
+                                row = rows[i];
+                                var friend = {
+                                    userid:row['userid'],
+                                    mail:row['mail'],
+                                    nickname:row['nickname'],
+                                    status:row['status'],
+                                };
                                 friends[friend['userid']] = friend;
                             }
-                            emitter.emit('init', JSON.stringify(rows));
+                            log.info('userid:'+userId+', friends:'+JSON.stringify(friends));
+                            emitter.emit('friendsInfo', JSON.stringify(rows));
                             //通知好友上线
                             //to do
                         }
@@ -288,17 +396,7 @@ function onMessage(data){
     var insertTime = new Date();
     time = DateFormat('yyyy-MM-dd hh:mm:ss', insertTime);
 
-    //响应自己
-    emitter.emit('message', JSON.stringify({id:friendId, seq:seq}));
-    //发送给朋友
-    var friend = sessions[friendId];
-    if(friend){
-        log.info(userId+" to "+friendId+" "+content);
-        friend['socket'].emit('message', JSON.stringify({'userid':friendId, 'friendid':userId, 'type':type, 'content':content, 'time':time}));
-    }else{
-        //好友离线
-        log.info('friend:'+friendId+" is offline!");
-    }
+    
 
     //入库
     var sql = 'insert into t_chatrecord set userid=?,friendid=?,time=?,type=?,content=?'; 
@@ -309,9 +407,216 @@ function onMessage(data){
             return;
         }
         var recoredId = rows.insertId;
+        //响应自己
+        emitter.emit('messageResp', JSON.stringify({'id':recoredId ,'friendid':friendId, 'seq':seq}));
+        //发送给朋友
+        var friend = sessions[friendId];
+        if(friend){
+            log.info(userId+" to "+friendId+" "+content);
+            friend['socket'].emit('message', JSON.stringify({'id':recoredId, 'userid':userId, 'friendid':friendId, 'type':type, 'content':content, 'time':time}));
+        }else{
+            //好友离线
+            log.info('friend:'+friendId+" is offline!");
+        }
     });
 
 }
+function checkCreateTag(data){
+    var obj = parseData(data);
+    var userId = obj['userid'];
+    var name = obj['name'];
+    var seq = obj['seq'];
+    if(!userId || !name || !seq){
+        return {id:userId, 'error':'format error:'+data};
+    }
+    return obj;
+}
+function onCreateTag(data){
+    log.debug('onCreateTag:', data);
+
+    var emitter = this;
+    var obj = checkCreateTag(data);
+
+    if(obj['errno']){
+        emitter.emit('createtag', JSON.stringify(obj));    
+        return;
+    }
+
+    var userId = obj['userid'];
+    var name = obj['name'];
+    var seq = obj['seq'];
+
+    var sql = 'insert into action_tags set userid=?,name=?'; 
+    var args = [userId,name];
+    db.query(sql, args, function(err, rows){
+        if(err){
+            log.error('insert tags:', err);
+            return;
+        }
+        var recoredId = rows.insertId;
+        emitter.emit('createtagResp', JSON.stringify({'id':recoredId,'name':name, 'seq':seq}));
+    });
+}
+
+function checkGetTags(data){
+    var obj = parseData(data);
+    var userId = obj['userid'];
+    if(!userId){
+        return {id:userId, 'error':'format error:'+data};
+    }
+    return obj;
+}
+function onGetTags(data){
+    log.debug('onGetTags:', data);
+
+    var emitter = this;
+    var obj = checkGetTags(data);
+
+    if(obj['errno']){
+        emitter.emit('gettagsResp', JSON.stringify(obj));    
+        return;
+    }
+
+    var userId = obj['userid'];
+
+    var sql = 'select * from action_tags where userid=?'; 
+    var args = [userId];
+    db.query(sql, args, function(err, rows){
+        if(err){
+            log.error('insert tags:', err);
+            return;
+        }
+        for(var i=0;i<rows.length;i++){
+            delete rows[i]['userid'];
+        }
+        emitter.emit('gettagsResp', JSON.stringify({'tagDatas':rows}));
+    });
+}
+
+function checkUploadVideo(data){
+    var obj = parseData(data);
+    var userId = obj['userid'];
+    var name = obj['name'];
+    var format = obj['format'];
+    var seq = obj['seq'];
+    if(!userId || !name || !seq ||!format){
+        return {id:userId, 'error':'format error:'+data};
+    }
+    return obj;
+}
+function onUploadVideo(data){
+    log.debug('onUploadVide:', data);
+
+    var emitter = this;
+    var obj = checkUploadVideo(data);
+
+    if(obj['errno']){
+        emitter.emit('uploadvideo', JSON.stringify(obj));    
+        return;
+    }
+
+    var userId = obj['userid'];
+    var name = obj['name'];
+    var tags = obj['tags'];
+    var notice = obj['notice'];
+    var format = obj['format'];
+    var seq = obj['seq'];
+
+    var videoName = '';
+    var videoPath = '';
+    var sql = 'insert into action_video set userid=?,name=?,tags=?,notice=?,video=?'; 
+    var args = [userId,name,tags,notice,];
+    db.query(sql, args, function(err, rows){
+        if(err){
+            log.error('insert tags:', err);
+            return;
+        }
+        var recoredId = rows.insertId;
+        emitter.emit('createtagResp', JSON.stringify({'id':recoredId, 'seq':seq}));
+    });
+}
+
+function checkHistory(data){
+    var obj = parseData(data);
+    var userId = obj['userid'];
+    var friendId = obj['friendid'];
+    var id = obj['id'];
+    var content = obj['content'];
+    if(!userId || !friendId || !id){
+        return {id:userId, 'errno':100};
+    }
+    return obj;
+}
+
+function onHistory(data){
+    log.debug('onHistory:', data);
+
+    var emitter = this;
+    var obj = checkHistory(data);
+
+    if(obj['errno']){
+        emitter.emit('message', JSON.stringify(obj));    
+        return;
+    }
+
+    var userId = obj['userid'];
+    var friendId = obj['friendid'];
+    var id = obj['id'];
+
+    //查库
+    var sql = 'select * from t_chatrecord where ((userid=? and friendid=?) or (friendid=? and userid=?)) and id<? order by id desc limit 10'; 
+    var args = [userId,friendId,userId,friendId,id];
+    if(id == undefined || id<=0){
+        sql = 'select * from t_chatrecord where ((userid=? and friendid=?) or (friendid=? and userid=?)) order by id desc limit 10'; 
+        args = [userId,friendId,userId,friendId];   
+    }
+    db.query(sql, args, function(err, rows){
+        if(err){
+            log.error('insert message:', err);
+            return;
+        }
+        for(var i=0;i<rows.length;i++){
+            var row = rows[i];
+            log.info(row.content+", "+row.time);
+        }
+        log.info(JSON.stringify({'friendid':friendId, 'messages':rows}));
+        emitter.emit('history', JSON.stringify({'friendid':friendId, 'messages':rows}));
+    });
+}
+
+function checkRunData(data){
+    var obj = parseData(data);
+    var userId = obj['userid'];
+    var myload = obj['myload'];
+    var mytime = obj['mytime'];
+    if(!userId){
+        return {id:userId, 'errno':100};
+    }
+    return obj;
+}
+
+function onUploadRun(data){
+    log.debug('onUploadRun:', data);
+
+    var emitter = this;
+    var obj = checkRunData(data);
+
+    if(obj['errno']){
+        emitter.emit('uploadrun', JSON.stringify(obj));    
+        return;
+    }
+
+    var userId = obj['userid'];
+    var myloadStr = data['myload'];
+    var mytimeStr = obj['mytime'];
+
+    log.debug('userid:'+userId, "myload:"+myloadStr, "mytime:"+mytimeStr);
+
+    db.query('insert into t_run(userid,load,time,uploadtime) values (?,?,?,?)', [userId, myloadStr, mytimeStr, new Date()], function(err, rows){
+        emitter.emit('uploadrun', JSON.stringify({'userid':userId}));
+    });
+}
+
 //创建房间
 function createRoom(data){
     var obj = parseData(data);
