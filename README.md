@@ -3,3 +3,8 @@
 
 私聊
 群聊
+
+config
+    global.js:  serverConfig = require('./server.json');
+    all file can use directly
+
