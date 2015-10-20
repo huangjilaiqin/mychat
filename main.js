@@ -1,5 +1,3 @@
-
-var SocketIO = require('socket.io');
 var fs = require('fs');
 var mysql = require('mysql');
 var async = require('async');
@@ -17,6 +15,14 @@ var communicate = require('./communicate.js');
 var roomBroadcast = communicate.roomBroadcast;
 var parseData = require('./util.js').parseData;
 var common = require('./common.js');
+
+/*
+var app = require('express')();
+var server = require('http').Server(app);
+var io = require('socket.io')(server);
+server.listen(5002);
+*/
+var io = require('socket.io')(5002);
 
 //暂时处理没有捕获的错误,记录错误日志
 process.on('uncaughtException', function (err) {
@@ -38,10 +44,17 @@ function afterLoadInfo(err, results){
     } 
 
     //启动监听端口
-    var io = SocketIO(serverConfig.listenPort);
+    //SocketIO.path('/ws');
+    //var io = new SocketIO(http, serverConfig.listenPort);
     log.trace('listen on:', serverConfig.listenPort); 
 
+    /*
+    io.on('connection', function(socket){
+        log.trace('io.on onConnect:', socket.id);
+    });
+    */
 
+    
     io.on('connection', function(socket){
         log.trace('onConnect:', socket.id);
         for(var protocolName in protocols)

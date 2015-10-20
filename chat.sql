@@ -101,10 +101,11 @@ create table `action_vedios`(
 )
 COLLATE='utf8_unicode_ci';
 
+drop table showtime;
 create table `showtime`(
     `id` int not null auto_increment,
     `userid` int not null,
-    `time` date not null,
+    `time` datetime not null,
     `address` varchar(60) null,
     `content` varchar(400) null,
     `pictures` varchar(200) null,

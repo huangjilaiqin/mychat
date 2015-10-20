@@ -1,7 +1,7 @@
 
 var BufferHelper = require('bufferhelper');
 var io = require('socket.io-client');
-var host = 'ws://localhost:5001';
+var host = 'ws://localhost:5002';
 var rehost = 'ws://192.168.41.102:5001';
 var yuhost = 'http://ws.qqshidao.com';
 

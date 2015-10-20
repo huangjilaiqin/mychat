@@ -1,5 +1,6 @@
 
-var row = {id:12,name:'huangji'};
-console.log(row);
-delete row['id'];
-console.log(row);
+var util = require('./util.js');
+var t = new Date();
+console.log(util.DateFormat('yyyy-MM-dd hh:mm:ss', t.getTime()));
+console.log(t.getTime());
+console.log(t.getTime()/1000);
