@@ -7,11 +7,12 @@ var yuhost = 'http://ws.qqshidao.com';
 var uhost = 'http://ws.51winball.com';
 var uhost2 = 'http://123.59.40.113:5002';
 
-host = 'http://localhost:5002/ws/';
-host = 'http://ws.o-topcy.com';
+host = 'http://localhost:5002';
+host = 'http://ws.o-topcy.com/';
+host = 'http://123.59.40.113/';
 var io = require('socket.io-client');
 var socket = io.connect(host, {
-    'path':'/ws/socket.io/',
+    'path':'/ws/',
     'timeout': 1000,
     'reconnectionAttempts': 50,
 });

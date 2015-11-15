@@ -101,7 +101,7 @@ create table `action_vedios`(
 )
 COLLATE='utf8_unicode_ci';
 
-drop table showtime;
+-- drop table showtime;
 create table `showtime`(
     `id` int not null auto_increment,
     `userid` int not null,
@@ -113,6 +113,29 @@ create table `showtime`(
     `ats` varchar(200) null,
     primary key (id),
     INDEX `userid` (`userid`) USING BTREE
+)
+COLLATE='utf8_unicode_ci';
+
+drop table `like`;
+create table `like`(
+    `id` int not null auto_increment,
+    `showid` int not null,
+    `liker` varchar(500) null,
+    primary key (id),
+    INDEX `showid` (`showid`) USING BTREE
+)
+COLLATE='utf8_unicode_ci';
+
+drop table `comment`;
+create table `comment`(
+    `id` int not null auto_increment,
+    `showid` int not null,
+    `commentuid` int not null,
+    `becommentuid` int null,
+    `comment` varchar(200) not null,
+    `time` datetime not null,
+    primary key (id),
+    INDEX `showid` (`showid`) USING BTREE
 )
 COLLATE='utf8_unicode_ci';
 

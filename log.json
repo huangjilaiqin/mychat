@@ -17,6 +17,13 @@
             "pattern": "_yyyy-MM-dd_hh",
             "alwaysIncludePattern": false, 
             "category":"performance"
+        },
+        {
+            "type":"dateFile",
+            "filename":"./log/httpProtocols.log",
+            "pattern": "_yyyy-MM-dd",
+            "alwaysIncludePattern": false, 
+            "category":"httpprotocol"
         }
     ],
     "levels":{
