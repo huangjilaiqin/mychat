@@ -22,7 +22,12 @@ app.get('/ws', function (req, res) {
     res.end();
 });
 
-
+function arrayRemoveElement(elements, e){
+    var i = elements.indexOf(e);
+    if(i != -1) {
+        elements.splice(i, 1);
+    }
+}
 
 
 // POST method route
@@ -75,7 +80,7 @@ app.post('/httproute/getshow', function (req, res) {
         var sql;
         var values = [];
 
-        sql = "select a.id as aid,a.userid,a.time,a.address,a.content,a.pictures,a.permission,a.ats,b.id as bid,b.liker,c.id as cid,c.commentuid,c.becommentuid,c.comment,c.time as commenttime from showtime a left join `like` b on (a.id=b.showid) left join comment c on (a.id=c.showid) where a.userid=? and a.id>? and a.id<?";
+        sql = "select a.id as aid,a.userid,u.nickname,u.headimg,a.time,a.address,a.content,a.pictures,a.permission,a.ats,b.id as bid,b.liker,c.id as cid,c.commentuid,c.becommentuid,c.comment,c.time as commenttime from showtime a left join `like` b on (a.id=b.showid) left join comment c on (a.id=c.showid) left join t_user u on a.userid=u.userid where a.userid=? and a.id>? and a.id<?";
         if(id==null){
             id = 0;
         }
@@ -89,17 +94,21 @@ app.post('/httproute/getshow', function (req, res) {
                 return;
             }
             showdatas = [];
-            console.log(rows);
+            //console.log(rows);
             log.info('getshow ', rows);
             for(var i in rows){
                 var row = rows[i];
                 if(!showdatas[row['aid']]){
                     comments = [];
                     liker = [];
+                    likeStatus = 0;
                     if(row['liker']){
-                        likerStrArray = row['liker'].split(',');
+                        likerStrArray = row['liker'].split(';');
                         for(var i in likerStrArray){
-                            liker.push(parseInt(likerStrArray[i]));  
+                            likeUserid = parseInt(likerStrArray[i])
+                            liker.push(likeUserid);  
+                            if(likeUserid==userid)
+                                likeStatus = 1;
                         }
                     }
                     pictures = [];
@@ -109,6 +118,8 @@ app.post('/httproute/getshow', function (req, res) {
                     showdatas[row['aid']] = {
                         'id':row['aid'],
                         userid:row['userid'],
+                        nickname:row['nickname'],
+                        headimg:row['headimg'], 
                         time:row['time'],
                         address:row['address'],
                         content:row['content'],
@@ -116,6 +127,7 @@ app.post('/httproute/getshow', function (req, res) {
                         permission:row['permission'],
                         ats:row['ats'],
                         liker:liker,
+                        likeStatus:likeStatus,
                         comments:comments,
                     }; 
                     commentItem = {
@@ -204,6 +216,123 @@ app.post('/httproute/register', function (req, res) {
                     res.end();
                     log.trace('register success:',mail, nickname, passwd);
                 });
+            }
+        });
+    });
+});
+
+app.post('/httproute/like', function (req, res) {
+    var form = new formidable.IncomingForm();
+
+    form.parse(req, function(err, fields, files) {
+        var userid = fields['userid'];
+        var showid = fields['showid'];
+        log.trace('like', userid, showid);
+
+        if(userid==null || showid==null){
+            res.writeHead(200, {'content-type': 'text/plain'});
+            var resData = {'error':'argments error'};
+            res.write(JSON.stringify(resData));
+            res.end();
+            return;
+        }
+        var sql = 'select liker,size from `like` where showid=?';
+        db.query(sql, [showid], function(err, rows){
+            if(err!=null){
+                res.writeHead(200, {'content-type': 'text/plain'});
+                var resData = {'error':err};
+                console.log('select liker:', resData);
+                res.write(JSON.stringify(resData));
+                res.end();
+                return;
+            }
+            if(rows.length>0){
+                liker = row['liker'].split(';');
+                size = row['size'];
+                liker.append(userid);
+                size++;
+                var sql = 'update `like` set liker=?,size=? where showid=?'; 
+                db.query(sql, [liker.join(';'),size], function(err, rows){
+                    if(err!=null){
+                        res.writeHead(200, {'content-type': 'text/plain'});
+                        var resData = {'error':err};
+                        console.log('select liker:', resData);
+                        res.write(JSON.stringify(resData));
+                        res.end();
+                        return;
+                    }
+                    res.writeHead(200, {'content-type': 'text/plain'});
+                    res.write(JSON.stringify({'showid':showid,'status':'ok'}));
+                    res.end();
+                });
+            }else{
+                liker = userid;
+                size = 1;
+                var sql = 'insert into `like` (liker,size,showid)values(?,?,?)'; 
+
+                console.log('insert like:',liker,size,showid);
+
+                db.query(sql, [liker,size,showid], function(err, rows){
+                    if(err!=null){
+                        res.writeHead(200, {'content-type': 'text/plain'});
+                        var resData = {'error':err};
+                        console.log(resData);
+                        res.write(JSON.stringify(resData));
+                        res.end();
+                        return;
+                    }
+                    res.writeHead(200, {'content-type': 'text/plain'});
+                    res.write(JSON.stringify({'showid':showid,'status':'ok'}));
+                    res.end();
+                });
+            }
+        });
+    });
+});
+
+app.post('/httproute/unlike', function (req, res) {
+    var form = new formidable.IncomingForm();
+
+    log.trace('unlike');
+    form.parse(req, function(err, fields, files) {
+        var userid = fields['userid'];
+        var showid = fields['showid'];
+        if(userid==null || showid==null){
+            res.writeHead(200, {'content-type': 'text/plain'});
+            var resData = {'error':'argments error'};
+            res.write(JSON.stringify(resData));
+            res.end();
+            return;
+        }
+        var sql = 'select liker,size from `like` where showid=?';
+        db.query(sql, [showid], function(err, rows){
+            if(err!=null){
+                res.writeHead(200, {'content-type': 'text/plain'});
+                var resData = {'error':err};
+                res.write(JSON.stringify(resData));
+                res.end();
+                return;
+            }
+            if(rows.length>0){
+                liker = row['liker'].split(';');
+                size = row['size'];
+                arrayRemoveElement(liker, ''+userid);
+                size--;
+                var sql = 'update `like` set liker=?,size=? where showid=?'; 
+                db.query(sql, [liker.join(';'),size], function(err, rows){
+                    if(err!=null){
+                        res.writeHead(200, {'content-type': 'text/plain'});
+                        var resData = {'error':err};
+                        res.write(JSON.stringify(resData));
+                        res.end();
+                        return;
+                    }
+                    res.writeHead(200, {'content-type': 'text/plain'});
+                    res.write(JSON.stringify({'showid':showid,'status':'ok'}));
+                    res.end();
+                });
+            }else{
+                log.error('unlike error, the user never like this show, '+showid);
             }
         });
     });

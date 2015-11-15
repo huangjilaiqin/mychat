@@ -1,14 +1,16 @@
 
 var db = require('./DBPool.js');
 
-sql = "select * from showtime a left join `like` b on (a.id=b.showid) left join comment c on (a.id=c.showid) where a.userid=? and a.id>? and a.id<?";
-//sql = "select * from showtime a left join `like` b on (a.id=b.showid) left join comment c on (b.showid=c.showid)";
-//sql = "select * from showtime a left join `like` b on (a.id=b.showid)";
-values = [1,0,10];
-//values = [];
-db.query(sql, values, function(err, rows){
-    console.log(err);
-    console.log(rows);
-});
+str = '1;2;3;4;45;6'
+arr = str.split(';');
+console.log(arr);
+arrayRemoveElement(arr, '45');
+console.log(arr);
 
 
+function arrayRemoveElement(elements, e){
+    var i = elements.indexOf(e);
+    if(i != -1) {
+        elements.splice(i, 1);
+    }
+}

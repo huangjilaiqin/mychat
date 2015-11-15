@@ -121,6 +121,7 @@ create table `like`(
     `id` int not null auto_increment,
     `showid` int not null,
     `liker` varchar(500) null,
+    `size` int null,
     primary key (id),
     INDEX `showid` (`showid`) USING BTREE
 )
