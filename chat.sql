@@ -88,14 +88,15 @@ create table `action_tags`(
 )
 COLLATE='utf8_unicode_ci';
 
-create table `action_vedios`(
+-- drop table action_videos;
+create table `action_videos`(
     `id` int not null auto_increment,
     `userid` int not null,
     `name` varchar(40) not null,
     -- tagid1,tagid2....
     `tags` varchar(50) null,
-    `notice` varchar(200) null,
-    `vedio` varchar(100) not null,
+    `notices` varchar(200) null,
+    `video_name` varchar(100) not null,
     primary key (id),
     INDEX `userid` (`userid`) USING BTREE
 )
@@ -116,7 +117,7 @@ create table `showtime`(
 )
 COLLATE='utf8_unicode_ci';
 
-drop table `like`;
+-- drop table `like`;
 create table `like`(
     `id` int not null auto_increment,
     `showid` int not null,
@@ -127,7 +128,7 @@ create table `like`(
 )
 COLLATE='utf8_unicode_ci';
 
-drop table `comment`;
+-- drop table `comment`;
 create table `comment`(
     `id` int not null auto_increment,
     `showid` int not null,

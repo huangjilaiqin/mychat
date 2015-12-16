@@ -1,16 +1,13 @@
 
 var db = require('./DBPool.js');
 
-str = '1;2;3;4;45;6'
-arr = str.split(';');
-console.log(arr);
-arrayRemoveElement(arr, '45');
-console.log(arr);
+var fs = require('fs');
 
-
-function arrayRemoveElement(elements, e){
-    var i = elements.indexOf(e);
-    if(i != -1) {
-        elements.splice(i, 1);
+fs.unlink('a.txt', function(err){
+    if(err){
+        console.log(err);
+    }else{
+        console.log('rm success');
     }
-}
+});
+

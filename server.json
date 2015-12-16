@@ -10,5 +10,5 @@
     "sessionCheckTime" : 300000,
     "analysisPerformanceTime" : 300000,
     "imgPath": "/home/service/nginx/html/myimg/",
-    "vedioPath":"/home/service/nginx/html/vedio/"
+    "videoPath":"/home/service/nginx/html/videos/"
 }
