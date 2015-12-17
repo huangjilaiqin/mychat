@@ -88,8 +88,8 @@ create table `action_tags`(
 )
 COLLATE='utf8_unicode_ci';
 
--- drop table action_videos;
-create table `action_videos`(
+-- drop table actions;
+create table `actions`(
     `id` int not null auto_increment,
     `userid` int not null,
     `name` varchar(40) not null,
@@ -101,6 +101,25 @@ create table `action_videos`(
     INDEX `userid` (`userid`) USING BTREE
 )
 COLLATE='utf8_unicode_ci';
+
+-- drop table lessons;
+create table `lessons`(
+    `id` int not null auto_increment,
+    `userid` int not null,
+    `name` varchar(40) not null,
+    `cover` varchar(50) null comment '封面图片',
+    `bodies` varchar(50) null comment '训练部位',
+    `address` varchar(50) not null,
+    `purpose` varchar(50) not null comment '增肌,减脂,塑形',
+    `cost_time` int not null,
+    `description` varchar(200) null,
+    `actionsid` varchar(100) not null,
+    primary key (id),
+    INDEX `userid` (`userid`) USING BTREE
+)
+COLLATE='utf8_unicode_ci';
+
+
 
 -- drop table showtime;
 create table `showtime`(

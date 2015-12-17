@@ -10,6 +10,7 @@ var util = require('./util.js');
 var log = require('./log.js').logHttpProtocol;
 
 var videoPath = serverConfig.videoPath;
+var imgPath = serverConfig.imgPath
 
 // GET method route
 app.get('/httproute', function (req, res) {
@@ -247,7 +248,7 @@ app.post('/httproute/actions', function (req, res) {
     form.parse(req, function(err, fields, files) {
         var userid = fields['userid'];
 
-        var sql = 'select * from action_videos where userid = ?';
+        var sql = 'select * from actions where userid = ?';
         db.query(sql, [userid], function(err, rows){
             if(err){
                 console.log(err);
@@ -465,7 +466,7 @@ app.post('/httproute/action/add', function (req, res) {
     form.maxFieldsSize = 20 * 1024 * 1024;
 
     form.parse(req, function(err, fields, files) {
-        sql = "insert into action_videos (userid,name,tags,notices,video_name) values(?,?,?,?,?)";
+        sql = "insert into actions (userid,name,tags,notices,video_name) values(?,?,?,?,?)";
         console.log(files)
         var videoFileName = files['videofile']['path'].replace(videoPath, "");
         var userId = fields['userId']
@@ -492,7 +493,7 @@ app.post('/httproute/action/delete', function (req, res) {
     var form = new formidable.IncomingForm();
 
     form.parse(req, function(err, fields, files) {
-        sql = "delete from action_videos where id=?";
+        sql = "delete from actions where id=?";
         videoFileName = fields['name'];
         actionId = fields['id'];
         console.log('delete action, id:',actionId);
@@ -532,7 +533,7 @@ app.post('/httproute/action/update', function (req, res) {
         console.log('oldVideoName:', fields['oldVideoName'])
         var oldVideoName = fields['oldVideoName'];
         if(oldVideoName!=null){
-            sql = "update action_videos set name=?,tags=?,notices=?,video_name=? where id=?";
+            sql = "update actions set name=?,tags=?,notices=?,video_name=? where id=?";
             var videoFileName = files['videofile']['path'].replace(videoPath, "");
             console.log('update video file:', videoPath, videoFileName);
             var actionId = fields['id']
@@ -558,7 +559,7 @@ app.post('/httproute/action/update', function (req, res) {
             });
         }else{
             //without update video
-            sql = "update action_videos set name=?,tags=?,notices=? where id=?";
+            sql = "update actions set name=?,tags=?,notices=? where id=?";
             var actionId = fields['id']
             values = [fields['name'], fields['tags'], fields['notices'], fields['id']];
             db.query(sql, values, function(err, rows){
@@ -596,7 +597,7 @@ app.post('/httproute/action/update', function (req, res) {
         var noticesStr = actionItem['notices'].join('##')
 
         if(files['videofile']!=null){
-            sql = "update action_videos set name=?,tags=?,notices=?,video_name=? where id=?";
+            sql = "update actions set name=?,tags=?,notices=?,video_name=? where id=?";
             var videoFileName = files['videofile']['path'].replace(videoPath, "");
             console.log('update video file:', videoPath, videoFileName);
             
@@ -622,7 +623,7 @@ app.post('/httproute/action/update', function (req, res) {
             });
         }else{
             //without update video
-            sql = "update action_videos set name=?,tags=?,notices=? where id=?";
+            sql = "update actions set name=?,tags=?,notices=? where id=?";
             values = [actionName, tagsStr, noticesStr, actionId];
             db.query(sql, values, function(err, rows){
                 if(err!=null){
@@ -638,6 +639,42 @@ app.post('/httproute/action/update', function (req, res) {
     });
     return;
 });
+
+app.post('/httproute/lesson/add', function (req, res) {
+    var form = new formidable.IncomingForm();
+    form.multiples = true;
+    form.uploadDir = imgPath;
+    form.keepExtensions = true;
+    form.maxFieldsSize = 2 * 1024 * 1024;
+
+    form.parse(req, function(err, fields, files) {
+        sql = "insert into lessons(userid,name,cover,bodies,address,purpose,cost_time,description,actionsid) values(?,?,?,?,?,?,?,?,?)";
+        var userId = fields['userId']
+        var lessonItem = JSON.parse(fields['lessonItem'])
+        var coverFileName = files['cover']['path'].replace(imgPath, "");
+        bodiesStr = JSON.stringify(actionItem['bodies'])
+        values = [userId,lessonItem['name'],lessonItem['cover'],lessonItem['bodies'],lessonItem['address'],lessonItem'], tagsStr, noticesStr, videoFileName];
+        db.query(sql, values, function(err, rows){
+            if(err!=null){
+                console.log(err);
+                return;
+            }
+            var actionId = rows.insertId;
+            res.writeHead(200, {'content-type': 'text/plain;charset=UTF-8'});
+            var resData = {'actionId':actionId, 'videoName':videoFileName};
+            res.write(JSON.stringify(resData));
+            res.end();
+        });
+    });
+    return;
+});
+app.post('/httproute/lessons', function (req, res) {
+});
+app.post('/httproute/lesson/delete', function (req, res) {
+});
+app.post('/httproute/lesson/update', function (req, res) {
+});
+
 
 app.listen(5003);
 log.trace('http protocol listen on 5003')
