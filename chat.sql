@@ -102,7 +102,7 @@ create table `actions`(
 )
 COLLATE='utf8_unicode_ci';
 
--- drop table lessons;
+drop table lessons;
 create table `lessons`(
     `id` int not null auto_increment,
     `userid` int not null,
@@ -113,7 +113,7 @@ create table `lessons`(
     `purpose` varchar(50) not null comment '增肌,减脂,塑形',
     `cost_time` int not null,
     `description` varchar(200) null,
-    `actionsid` varchar(100) not null,
+    `actions_id` varchar(100) not null,
     primary key (id),
     INDEX `userid` (`userid`) USING BTREE
 )

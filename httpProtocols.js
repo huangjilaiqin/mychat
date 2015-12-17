@@ -587,7 +587,7 @@ app.post('/httproute/lesson/add', function (req, res) {
     form.maxFieldsSize = 2 * 1024 * 1024;
 
     form.parse(req, function(err, fields, files) {
-        sql = "insert into lessons(userid,name,cover,bodies,address,purpose,cost_time,description,actionsid) values(?,?,?,?,?,?,?,?,?)";
+        sql = "insert into lessons(userid,name,cover,bodies,address,purpose,cost_time,description,actions_id) values(?,?,?,?,?,?,?,?,?)";
         var userId = fields['userId']
         var lesson = JSON.parse(fields['lesson'])
         var coverFileName = files['cover']['path'].replace(imgPath, "");
@@ -634,7 +634,7 @@ app.post('/httproute/lessons', function (req, res) {
                         purpose:row['purpose'],
                         costTime:row['cost_time'],
                         description:row['description'],
-                        actionsId:row['actionsid'],
+                        actionsId:row['actions_id'],
                     });
                 } 
                 responseNormal(res, {'lessons':lessons});
@@ -681,7 +681,7 @@ app.post('/httproute/lesson/update', function (req, res) {
         if(files['cover']!=null){
             var coverFileName = files['cover']['path'].replace(imgPath, "");
             values = [lessons['name'],coverFileName,bodiesStr,lessons['address'],lessons['purpose'],lessons['cost_time'],lessons['description'],actionsIdStr, lesson['id']];
-            sql = "update lessons set name=?,cover=?,bodies=?,address=?,purpose=?,cost_time=?,description=?,actionsid=? where id=?";
+            sql = "update lessons set name=?,cover=?,bodies=?,address=?,purpose=?,cost_time=?,description=?,actions_id=? where id=?";
             db.query(sql, values, function(err, rows){
                 if(err!=null){
                     responseError(res,err);
@@ -691,7 +691,7 @@ app.post('/httproute/lesson/update', function (req, res) {
             });
         }else{
             values = [lessons['name'],bodiesStr,lessons['address'],lessons['purpose'],lessons['cost_time'],lessons['description'],actionsIdStr,lesson['id']];
-            sql = "update lessons set name=?,bodies=?,address=?,purpose=?,cost_time=?,description=?,actionsid=? where id=?";
+            sql = "update lessons set name=?,bodies=?,address=?,purpose=?,cost_time=?,description=?,actions_id=? where id=?";
             db.query(sql, values, function(err, rows){
                 if(err!=null){
                     responseError(res,err);
