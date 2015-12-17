@@ -40,7 +40,7 @@ app.post('/httproute/test', function (req, res) {
 
     form.parse(req, function(err, fields, files) {
         if(err!=null){
-            console.log(err);
+            responseError(res, err);
             return;
         }
         console.log(fields)
@@ -63,7 +63,7 @@ app.post('/httproute/show', function (req, res) {
         log.trace('show');
         console.log('show:', fields['userid']);
         if(err!=null){
-            console.log(err);
+            responseError(res, err);
             return;
         }
         sql = "insert into showtime(userid,time,address,content,pictures,permission,ats) values(?,?,?,?,?,?,?)";
@@ -83,7 +83,7 @@ app.post('/httproute/show', function (req, res) {
         values = [fields['userid'], time, fields['address'], fields['content'], fields['pictures'],fields['permission'],fields['ats']];
         db.query(sql, values, function(err, rows){
             if(err!=null){
-                console.log(err);
+                responseError(res, err);
                 return;
             }
             var showId = rows.insertId;
@@ -109,7 +109,7 @@ function responseGetshow(userid,id,direct,pageNum,req,res){
     }
     db.query(sql, [id], function(err, rows){
         if(err!=null){
-            console.log(err);
+            responseError(res, err);
             return;
         }else{
             if(rows.length==0){
@@ -129,7 +129,7 @@ function responseGetshow(userid,id,direct,pageNum,req,res){
             sql = "select a.id as aid,a.userid,u.nickname,u.headimg,a.time,a.address,a.content,a.pictures,a.permission,a.ats,b.id as bid,b.liker,c.id as cid,c.commentuid,c.becommentuid,c.comment,c.time as commenttime from showtime a left join `like` b on (a.id=b.showid) left join comment c on (a.id=c.showid) left join t_user u on a.userid=u.userid where a.id in ("+idsStr+")";
             db.query(sql, [], function(err, rows){
                 if(err!=null){
-                    console.log(err);
+                    responseError(res, err);
                     return;
                 }
                 showdatas = [];
@@ -221,7 +221,7 @@ app.post('/httproute/getshow', function (req, res) {
             var newIdSql = 'select id from showtime order by time desc limit 1';
             db.query(newIdSql, [], function(err, rows){
                 if(err){
-                    console.log(err);
+                    responseError(res, err);
                 }else{
                     if(rows.length==0){
                         id = 0;
@@ -243,15 +243,13 @@ app.post('/httproute/getshow', function (req, res) {
 app.post('/httproute/actions', function (req, res) {
     var form = new formidable.IncomingForm();
 
-    log.trace('getactions');
-    console.log('getactions');
     form.parse(req, function(err, fields, files) {
         var userid = fields['userid'];
 
         var sql = 'select * from actions where userid = ?';
         db.query(sql, [userid], function(err, rows){
             if(err){
-                console.log(err);
+                responseError(res, err);
             
             }else{
                 actionDatas = [];
@@ -273,7 +271,6 @@ app.post('/httproute/actions', function (req, res) {
             }
         });
     });//form
-    return;
 });
 
 
@@ -476,7 +473,7 @@ app.post('/httproute/action/add', function (req, res) {
         values = [userId, actionItem['name'], tagsStr, noticesStr, videoFileName];
         db.query(sql, values, function(err, rows){
             if(err!=null){
-                console.log(err);
+                responseError(res, err);
                 return;
             }
             var actionId = rows.insertId;
@@ -500,13 +497,13 @@ app.post('/httproute/action/delete', function (req, res) {
         values = [actionId];
         db.query(sql, values, function(err, rows){
             if(err!=null){
-                console.log(err);
+                responseError(res, err);
                 return;
             }
 
             fs.unlink(videoPath+videoFileName, function(err){
                 if(err){
-                    console.log(err);
+                    responseError(res, err);
                 }else{
                     console.log('rm success');
                 }
@@ -520,64 +517,6 @@ app.post('/httproute/action/delete', function (req, res) {
     });
     return;
 });
-/*
-app.post('/httproute/action/update', function (req, res) {
-    var form = new formidable.IncomingForm();
-
-    form.multiples = true;
-    form.uploadDir = videoPath;
-    form.keepExtensions = true;
-    form.maxFieldsSize = 20 * 1024 * 1024;
-
-    form.parse(req, function(err, fields, files) {
-        console.log('oldVideoName:', fields['oldVideoName'])
-        var oldVideoName = fields['oldVideoName'];
-        if(oldVideoName!=null){
-            sql = "update actions set name=?,tags=?,notices=?,video_name=? where id=?";
-            var videoFileName = files['videofile']['path'].replace(videoPath, "");
-            console.log('update video file:', videoPath, videoFileName);
-            var actionId = fields['id']
-            values = [fields['name'], fields['tags'], fields['notices'], videoFileName, fields['id']];
-            
-            db.query(sql, values, function(err, rows){
-                if(err!=null){
-                    console.log(err);
-                    return;
-                }
-                //delete old video file
-                fs.unlink(videoPath+oldVideoName, function(err){
-                    if(err){
-                        console.log(err);
-                    }else{
-                        console.log('rm success');
-                    }
-                });
-                res.writeHead(200, {'content-type': 'text/plain;charset=UTF-8'});
-                var resData = {'actionId':actionId, 'videoName':videoFileName};
-                res.write(JSON.stringify(resData));
-                res.end();
-            });
-        }else{
-            //without update video
-            sql = "update actions set name=?,tags=?,notices=? where id=?";
-            var actionId = fields['id']
-            values = [fields['name'], fields['tags'], fields['notices'], fields['id']];
-            db.query(sql, values, function(err, rows){
-                if(err!=null){
-                    console.log(err);
-                    return;
-                }
-                res.writeHead(200, {'content-type': 'text/plain;charset=UTF-8'});
-                var resData = {'actionId':actionId};
-                res.write(JSON.stringify(resData));
-                res.end();
-            });
-        }
-    });
-    return;
-});
-
-*/
 
 app.post('/httproute/action/update', function (req, res) {
     var form = new formidable.IncomingForm();
@@ -605,13 +544,13 @@ app.post('/httproute/action/update', function (req, res) {
             
             db.query(sql, values, function(err, rows){
                 if(err!=null){
-                    console.log(err);
+                    responseError(res, err);
                     return;
                 }
                 //delete old video file
                 fs.unlink(videoPath+oldVideoName, function(err){
                     if(err){
-                        console.log(err);
+                        responseError(res, err);
                     }else{
                         console.log('rm success');
                     }
@@ -627,13 +566,13 @@ app.post('/httproute/action/update', function (req, res) {
             values = [actionName, tagsStr, noticesStr, actionId];
             db.query(sql, values, function(err, rows){
                 if(err!=null){
-                    console.log(err);
-                    return;
+                    responseError(res, err);
+                }else{
+                    res.writeHead(200, {'content-type': 'text/plain;charset=UTF-8'});
+                    var resData = {'actionId':actionId};
+                    res.write(JSON.stringify(resData));
+                    res.end();
                 }
-                res.writeHead(200, {'content-type': 'text/plain;charset=UTF-8'});
-                var resData = {'actionId':actionId};
-                res.write(JSON.stringify(resData));
-                res.end();
             });
         }
     });
@@ -650,29 +589,118 @@ app.post('/httproute/lesson/add', function (req, res) {
     form.parse(req, function(err, fields, files) {
         sql = "insert into lessons(userid,name,cover,bodies,address,purpose,cost_time,description,actionsid) values(?,?,?,?,?,?,?,?,?)";
         var userId = fields['userId']
-        var lessonItem = JSON.parse(fields['lessonItem'])
+        var lesson = JSON.parse(fields['lesson'])
         var coverFileName = files['cover']['path'].replace(imgPath, "");
-        bodiesStr = JSON.stringify(actionItem['bodies'])
-        values = [userId,lessonItem['name'],lessonItem['cover'],lessonItem['bodies'],lessonItem['address'],lessonItem'], tagsStr, noticesStr, videoFileName];
+        bodiesStr = lesson['bodies'].join(',');
+        actionsIdStr = lesson['actionsId'].join(',');
+        values = [userId,lessons['name'],coverFileName,bodiesStr,lessons['address'],lessons['purpose'],lessons['cost_time'],lessons['description'],actionsIdStr]];
         db.query(sql, values, function(err, rows){
             if(err!=null){
-                console.log(err);
-                return;
+                responseError(res,err);
+            }else{
+                var id = rows.insertId;
+                responseNormal(res, {'id':id});
             }
-            var actionId = rows.insertId;
-            res.writeHead(200, {'content-type': 'text/plain;charset=UTF-8'});
-            var resData = {'actionId':actionId, 'videoName':videoFileName};
-            res.write(JSON.stringify(resData));
-            res.end();
         });
     });
-    return;
 });
+
+function responseError(res, error){
+    console.log(error);
+    res.writeHead(200, {'content-type': 'text/plain;charset=UTF-8'});
+    res.write(JSON.stringify({'error':JSON.stringify(error)}));
+    res.end();
+}
+
 app.post('/httproute/lessons', function (req, res) {
+    var form = new formidable.IncomingForm();
+    form.parse(req, function(err, fields, files) {
+        var userId = fields['userId'];
+
+        var sql = 'select * from lessons where userid = ?';
+        db.query(sql, [userId], function(err, rows){
+            if(err){
+                responseError(res, err);
+            }else{
+                lessons = [];
+                for(var i in rows){
+                    row = rows[i];
+                    lessons.push({
+                        id:row['id'],
+                        name:row['name'],
+                        videoName:row['cover'],
+                        bodies:row['bodies'],
+                        address:row['address'],
+                        purpose:row['purpose'],
+                        costTime:row['cost_time'],
+                        description:row['description'],
+                        actionsId:row['actionsid'],
+                    });
+                } 
+                responseNormal(res, {'lessons':lessons});
+            }
+        });
+    });
 });
+
 app.post('/httproute/lesson/delete', function (req, res) {
+    var form = new formidable.IncomingForm();
+    form.parse(req, function(err, fields, files) {
+        var userId = fields['userId'];
+        var id = fields['id'];
+        sql = 'delete from lessons where id=? and userid=?'
+        db.query(sql, [id, userId], function(err, rows){
+            if(err){
+                responseError(res, err);
+            }else{
+                responseNormal(res, {'id':id})
+            }
+        });
+    });
 });
+
+function responseNormal(res, data){
+    res.writeHead(200, {'content-type': 'text/plain;charset=UTF-8'});
+    res.write(JSON.stringify(data));
+    res.end();
+}
+
 app.post('/httproute/lesson/update', function (req, res) {
+    var form = new formidable.IncomingForm();
+
+    form.multiples = true;
+    form.uploadDir = imgPath;
+    form.keepExtensions = true;
+    form.maxFieldsSize = 2 * 1024 * 1024;
+
+    form.parse(req, function(err, fields, files) {
+        var userId = fields['userId'];
+        var lesson = JSON.parse(fields['lesson']);
+        bodiesStr = lesson['bodies'].join(',')
+        actionsIdStr = lessons['actionsId'].join(',')
+        if(files['cover']!=null){
+            var coverFileName = files['cover']['path'].replace(imgPath, "");
+            values = [lessons['name'],coverFileName,bodiesStr,lessons['address'],lessons['purpose'],lessons['cost_time'],lessons['description'],actionsIdStr, lesson['id']];
+            sql = "update lessons set name=?,cover=?,bodies=?,address=?,purpose=?,cost_time=?,description=?,actionsid=? where id=?";
+            db.query(sql, values, function(err, rows){
+                if(err!=null){
+                    responseError(res,err);
+                }else{
+                    responseNormal(res, {'id':id});
+                }
+            });
+        }else{
+            values = [lessons['name'],bodiesStr,lessons['address'],lessons['purpose'],lessons['cost_time'],lessons['description'],actionsIdStr,lesson['id']];
+            sql = "update lessons set name=?,bodies=?,address=?,purpose=?,cost_time=?,description=?,actionsid=? where id=?";
+            db.query(sql, values, function(err, rows){
+                if(err!=null){
+                    responseError(res,err);
+                }else{
+                    responseNormal(res, {'id':id});
+                }
+            });
+        }
+    });
 });
 
 
