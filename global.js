@@ -49,5 +49,7 @@ userState = {
 };
 
 sessions = {};
+//to do 设置token过期时间
+tokens = {};
 
 

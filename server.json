@@ -9,6 +9,6 @@
     "sessionTime" : 1800000,
     "sessionCheckTime" : 300000,
     "analysisPerformanceTime" : 300000,
-    "imgPath": "/home/service/nginx/html/myimg/",
+    "imgPath": "/home/service/nginx/html/imgs/",
     "videoPath":"/home/service/nginx/html/videos/"
 }

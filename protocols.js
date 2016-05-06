@@ -12,18 +12,24 @@ var issued = communicate.issued;
 var DateFormat = require('./util.js').DateFormat;
 var common = require('./common.js');
 var fs = require('fs');
+var md5 = require('md5');
 
 
 var protocols = {
     'register':onRegister,
     'changeUserInfo':onChangeUserInfo,
+    'verifyToken':onVerifyToken,
+    'loadInitData':onLoadInitData,
     'login':onLogin,
     'logout':onLogout,
     'finduserbymail':onFindUserByMail,
     'addfriendbymail':onAddFriendByMail,
+    'addfriend':onAddFriend,
+    'changename':onChangename,
     //'issueStatus':onIssueStatus,
     //发送聊天消息
     'message' : onMessage,
+    'offlinemessage':onLoadOfflineMessage,
     'history' : onHistory,
     'uploadrun' : onUploadRun,
     'createtag':onCreateTag,
@@ -240,16 +246,93 @@ function checkLogin(data){
     return obj;
 }
 
+
+
 var USER_STATUS_ONLINE = 1;
 var USER_STATUS_OFFLINE = 2;
 var USER_STATUS_BUSY = 3;
 
-function onLogin(data){
-    log.debug('onLogin');
-    log.debug('onLogin:', data);
-    var obj = checkLogin(data);
-    var status =  obj['status']?obj['status']:USER_STATUS_ONLINE;
+function onVerifyToken(data){
+    log.debug('onVerifyToken:', data);
+    var obj = checkVerifyToken(data);
+    var userid = obj['userid'];
+    var token = obj['token'];
     var emitter = this;
+
+    if(obj['error']){
+        emitter.emit('verifyToken', JSON.stringify(obj));
+    }else{
+        if(verifyToken(userid,token)){
+            //token有效
+            emitter.emit('verifyToken', JSON.stringify({'userid':userid,'token':token}));
+        }else{
+            //需要登录
+            emitter.emit('verifyToken', JSON.stringify({'error':'token is expire', 'errno':401}));
+        }
+    }
+}
+
+function verifyToken(userid,token){
+    oldToken=getToken(userid);
+    if(token==oldToken){
+        //token有效
+        return 1;
+    }else{
+        //需要登录
+        return 0;
+    }
+}
+
+function checkVerifyToken(data){
+    var obj = JSON.parse(data);
+    var userid = obj['userid'];
+    var token = obj['token'];
+    if(!userid || !token){
+        return {'error':'error argument'};
+    }
+    return obj;
+}
+
+function getToken(key){
+    return tokens[key];
+}
+
+function generateToken(userid){
+    return md5(userid);    
+}
+
+//加载初始信息
+function onLoadInitData(data){
+    log.debug('onLoadInitData:', data);
+    var emitter = this;
+    var obj = JSON.parse(data);
+    var userid = obj['userid'];
+    var token = obj['token'];
+    if(!userid||!token){
+        emitter.emit('login', JSON.stringify({'error':'error arguments'}));
+    }else{
+        if(verifyToken(userid,token)==0){
+            emitter.emit('loadInitData', JSON.stringify({'error':'token is expire', 'errno':401}));
+            return;
+        }
+
+        var session = {};
+        sessions[userid] = session;
+        session['socket'] = emitter;
+
+        newData = loadInitData(userid);
+        emitter.emit('loadInitData', JSON.stringify(newData));
+    }
+}
+
+function loadInitData(userid){
+    return {};
+}
+
+function onLogin(data){
+    log.debug('onLogin:', data);
+    var emitter = this;
+    var obj = checkLogin(data);
     var mail = obj['mail'];
     var passwd = obj['passwd'];
     if(obj['error']){
@@ -262,42 +345,10 @@ function onLogin(data){
                 if(rows.length == 0){
                     emitter.emit('login', JSON.stringify({'errno':102}));
                 }else{
-                    row = rows[0];
-                    var userId = row['userid'];
-                    var mail = row['mail'];
-                    var phone = row['phone'];
-                    var nickname = row['nickname'];
-                    var headimg = row['headimg'];
-                    var status = row['status'];
-                    emitter.emit('login', JSON.stringify({'userid':userId, 'mail':mail, 'phone':phone, 'nickname':nickname, 'headimg': headimg, 'status':status, 'passwd':passwd}));
-                    db.query('update t_user set status=? where userid=?', [status, userId], function(err, rows){
-                        log.trace(userId+" set status:"+status);
-                    });
-                    db.query('select u.* from (select friendid from t_friends where userid = ?) as f inner join t_user as u on(f.friendid=u.userid)', [userId], function(err, rows){
-                        if(err){
-                            emitter.emit('login', JSON.stringify({'error':err}));
-                        }else{
-                            var session = {};
-                            sessions[userId] = session;
-                            session['socket'] = emitter;
-                            var friends = {};
-                            session['friends'] = friends;
-                            for(i in rows){
-                                row = rows[i];
-                                var friend = {
-                                    userid:row['userid'],
-                                    mail:row['mail'],
-                                    nickname:row['nickname'],
-                                    status:row['status'],
-                                };
-                                friends[friend['userid']] = friend;
-                            }
-                            log.info('userid:'+userId+', friends:'+JSON.stringify(friends));
-                            emitter.emit('friendsInfo', JSON.stringify(rows));
-                            //通知好友上线
-                            //to do
-                        }
-                    });
+                    var userid = rows[0]['userid'];
+                    token = generateToken(userid);
+                    tokens[userid] = token;
+                    emitter.emit('login', JSON.stringify({'userid':userid,'token':token}));
                 }
             }        
         });
@@ -356,6 +407,42 @@ function onAddFriendByMail(data){
     }
 }
 
+function onAddFriend(data){
+    var obj = JSON.parse(data);
+    var emitter = this;
+    var userid = obj['userid'];
+    var friendid = obj['friendid'];
+    if(!userid && !friendid)
+        emitter.emit('addfriend', JSON.stringify({'error':"argument error"}));
+    else{
+        db.query('insert into t_friends (userid,friendid) values (?,?)', [userid,friendid], function(err, rows){
+            if(err){
+                emitter.emit('addfriend', JSON.stringify({'friendid':friendid,'error':JSON.stringify(err)}));
+            }else{
+                emitter.emit('addfriend', JSON.stringify({'friendid':friendid}));
+            }
+        });
+    }
+}
+
+function onChangename(data){
+    var obj = JSON.parse(data);
+    var emitter = this;
+    var userid = obj['userid'];
+    var name = obj['name'];
+    if(!userid && !name)
+        emitter.emit('changename', JSON.stringify({'error':"argument error"}));
+    else{
+        db.query('update t_user set nickname=? where userid=?', [name,userid], function(err, rows){
+            if(err){
+                emitter.emit('changename', JSON.stringify({'error':JSON.stringify(err)}));
+            }else{
+                emitter.emit('changename', JSON.stringify({'userid':userid,'name':name}));
+            }
+        });
+    }
+}
+
 function onIssueStatus(data){
 
 }
@@ -363,11 +450,11 @@ function onIssueStatus(data){
 function checkMessage(data){
     var obj = parseData(data);
     var userId = obj['userid'];
-    var friendId = obj['friendid'];
+    var chatgroupId = obj['chatgroupId'];
     var type = obj['type'];
     var content = obj['content'];
-    if(!userId || !friendId || !content){
-        return {id:userId, 'errno':100};
+    if(!userId || !chatgroupId || !content){
+        return {'errno':100,'error':'error args'};
     }
     if(type == undefined || type<chatMsgType.min || type>chatMsgType.max){
         return {id:userId, 'errno': 301};
@@ -386,8 +473,10 @@ function onMessage(data){
         return;
     }
 
-    var userId = obj['userid'];
-    var friendId = obj['friendid'];
+    var id = obj['id'];
+    var chatgroupId = obj['chatgroupId'];
+    var userid = obj['userid'];
+    var friendid = obj['friendid'];
     var type = obj['type'];
     var content = obj['content'];
     var seq = obj['seq'];
@@ -396,31 +485,89 @@ function onMessage(data){
     var insertTime = new Date();
     time = DateFormat('yyyy-MM-dd hh:mm:ss', insertTime);
 
-    
-
     //入库
-    var sql = 'insert into t_chatrecord set userid=?,friendid=?,time=?,type=?,content=?'; 
-    var args = [userId,friendId,time,type,content];
+    var sql = 'insert into t_chatrecord set id=?,chatgroup_id=?,time=?,userid=?,type=?,content=?'; 
+    var args = [id,chatgroupId,time,userid,type,content];
     db.query(sql, args, function(err, rows){
         if(err){
             log.error('insert message:', err);
             return;
         }
-        var recoredId = rows.insertId;
+        var seq = rows.insertId;
         //响应自己
-        emitter.emit('messageResp', JSON.stringify({'id':recoredId ,'friendid':friendId, 'seq':seq}));
+        emitter.emit('messageResp', JSON.stringify({'id':id,'chatgroupId':chatgroupId, 'seq':seq}));
         //发送给朋友
-        var friend = sessions[friendId];
+        var friend = sessions[friendid];
         if(friend){
-            log.info(userId+" to "+friendId+" "+content);
-            friend['socket'].emit('message', JSON.stringify({'id':recoredId, 'userid':userId, 'friendid':friendId, 'type':type, 'content':content, 'time':time}));
+            log.info(userid+" to "+friendid+" "+content);
+            friend['socket'].emit('message', JSON.stringify({'chatgroupId':chatgroupId ,'userid':userid, 'type':type, 'content':content, 'time':time,'seq':seq}));
         }else{
             //好友离线
-            log.info('friend:'+friendId+" is offline!");
+            log.info('friend:'+friendid+" is offline!");
+            for(key in sessions){
+                log.info('friendid:'+key+", "+typeof(key)+", "+typeof(friendid));
+            }
         }
     });
-
 }
+
+function checkLoadOfflineMessage(data){
+    var obj = parseData(data);
+    var userid = obj['userid'];
+    var args = obj['args'];
+    if(!userid||!args){
+        return {'errno':100,'error':'error args'};
+    }
+    return obj;
+}
+
+function onLoadOfflineMessage(data){
+    log.debug('onLoadOfflineMessage:', data);
+    console.log('onLoadOfflineMessage:', data);
+
+    var emitter = this;
+    var obj = checkLoadOfflineMessage(data);
+    if(obj['errno']){
+        emitter.emit('offlinemessage', JSON.stringify(obj));    
+        return;
+    }
+
+    var userid = obj['userid'];
+    var args = obj['args'];
+
+    console.log(args);
+    sql = 'select * from t_chatrecord where chatgroup_id=? and seq>? order by seq;'
+    for(chatgroupId in args){
+        seq = args[chatgroupId] 
+        db.query(sql, [chatgroupId,seq], function(err, rows){
+            if(err){
+                emitter.emit('offlinemessage', JSON.stringify({'error':JSON.stringify(err)}));
+                return;
+            }
+            for(i in rows){
+                row = rows[i];
+                row['chatgroupId']=row['chatgroup_id'];
+                delete row['chatgroup_id'];
+            }
+            emitter.emit('offlinemessage', JSON.stringify({'datas':rows}));
+        });
+    }
+
+    /*
+    var sql = 'insert into t_chatrecord set id=?,chatgroup_id=?,time=?,userid=?,type=?,content=?'; 
+    var args = [id,chatgroupId,time,userid,type,content];
+    db.query(sql, args, function(err, rows){
+        if(err){
+            log.error('insert message:', err);
+            return;
+        }
+        var seq = rows.insertId;
+        //响应自己
+        emitter.emit('offlinemessage', JSON.stringify({'id':id,'chatgroupId':chatgroupId, 'seq':seq}));
+    });
+    */
+}
+
 function checkCreateTag(data){
     var obj = parseData(data);
     var userId = obj['userid'];
